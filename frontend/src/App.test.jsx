@@ -2,7 +2,7 @@ import React from 'react';
 import { describe, it, expect } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import App, { filterTasks, countTasks, searchTasks } from './App';
+import App, { filterTasks, countTasks, searchTasks, sortTasks } from './App';
 
 const TASKS = [
   { id: 1, title: 'A', assignee: 'X', status: 'done', date: '2025-06-01' },
@@ -129,5 +129,80 @@ describe('App search box', () => {
     const rows = getDataRows();
     expect(rows).toHaveLength(1);
     expect(within(rows[0]).getByText('Add error handling')).toBeInTheDocument();
+  });
+});
+
+describe('sortTasks', () => {
+  it('returns the tasks unchanged when no sort key is given', () => {
+    expect(sortTasks(TASKS, null).map(t => t.id)).toEqual([1, 2, 3, 4]);
+  });
+
+  it('sorts ascending by the given key', () => {
+    expect(sortTasks(TASKS, 'assignee', 'asc').map(t => t.id)).toEqual([1, 4, 2, 3]);
+  });
+
+  it('sorts descending by the given key', () => {
+    expect(sortTasks(TASKS, 'assignee', 'desc').map(t => t.id)).toEqual([3, 2, 1, 4]);
+  });
+
+  it('sorts by date ascending', () => {
+    expect(sortTasks(TASKS, 'date', 'asc').map(t => t.id)).toEqual([1, 2, 3, 4]);
+  });
+
+  it('does not mutate the original array', () => {
+    const original = [...TASKS];
+    sortTasks(TASKS, 'title', 'desc');
+    expect(TASKS).toEqual(original);
+  });
+});
+
+describe('App sortable headers', () => {
+  const getDataRows = () =>
+    screen.getAllByRole('row').filter(row => within(row).queryAllByRole('cell').length > 0);
+
+  const firstTitles = () =>
+    getDataRows().map(row => within(row).getAllByRole('cell')[0].textContent.trim());
+
+  it('defaults to sorting by date ascending', () => {
+    render(<App />);
+    const titles = firstTitles();
+    expect(titles[0]).toBe('Set up project repository');
+    expect(titles[titles.length - 1]).toBe('Set up monitoring & alerts');
+    expect(screen.getByRole('columnheader', { name: /Date/ })).toHaveAttribute('aria-sort', 'ascending');
+  });
+
+  it('sorts ascending by Task title when the Task header is clicked', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /^Task$/ }));
+    const titles = firstTitles();
+    expect(titles[0]).toBe('Add error handling');
+    expect(screen.getByRole('columnheader', { name: /Task/ })).toHaveAttribute('aria-sort', 'ascending');
+  });
+
+  it('toggles to descending when the same header is clicked again', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    const taskHeaderButton = screen.getByRole('button', { name: /^Task$/ });
+    await user.click(taskHeaderButton);
+    await user.click(taskHeaderButton);
+
+    const titles = firstTitles();
+    expect(titles[0]).toBe('Write unit tests');
+    expect(screen.getByRole('columnheader', { name: /Task/ })).toHaveAttribute('aria-sort', 'descending');
+  });
+
+  it('resets to ascending when switching to a different column', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /^Task$/ }));
+    await user.click(screen.getByRole('button', { name: /^Task$/ }));
+    await user.click(screen.getByRole('button', { name: /Assignee/ }));
+
+    expect(screen.getByRole('columnheader', { name: /Assignee/ })).toHaveAttribute('aria-sort', 'ascending');
+    expect(screen.getByRole('columnheader', { name: /Task/ })).toHaveAttribute('aria-sort', 'none');
   });
 });

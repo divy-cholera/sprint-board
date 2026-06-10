@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   LayoutDashboard, ListTodo, Users, Settings, Bell,
   ChevronDown, Circle, Clock, CheckCircle2, AlertCircle,
-  CalendarDays, Tag, Search
+  CalendarDays, Tag, Search, ArrowUp, ArrowDown
 } from 'lucide-react';
 
 const INITIAL_TASKS = [
@@ -71,6 +71,27 @@ export function searchTasks(tasks, query) {
 export function countTasks(tasks, filter) {
   return filterTasks(tasks, filter).length;
 }
+
+export function sortTasks(tasks, sortKey, sortDir = 'asc') {
+  if (!sortKey) return tasks;
+  const dir = sortDir === 'desc' ? -1 : 1;
+  return [...tasks].sort((a, b) => {
+    const av = String(a[sortKey]).toLowerCase();
+    const bv = String(b[sortKey]).toLowerCase();
+    if (av < bv) return -1 * dir;
+    if (av > bv) return 1 * dir;
+    return 0;
+  });
+}
+
+export const SORTABLE_COLUMNS = [
+  { key: 'title', label: 'Task' },
+  { key: 'assignee', label: 'Assignee' },
+  { key: 'status', label: 'Status' },
+  { key: 'priority', label: 'Priority', sortable: false },
+  { key: 'labels', label: 'Labels', sortable: false },
+  { key: 'date', label: 'Date' }
+];
 
 function Avatar({ name, color }) {
   const initials = name.split(' ').map(n => n[0]).join('').toUpperCase();
@@ -142,8 +163,23 @@ export default function App() {
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState('board');
+  const [sortKey, setSortKey] = useState('date');
+  const [sortDir, setSortDir] = useState('asc');
 
-  const visibleTasks = searchTasks(filterTasks(tasks, filter), search);
+  const handleSort = (key) => {
+    if (sortKey === key) {
+      setSortDir(dir => (dir === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir('asc');
+    }
+  };
+
+  const visibleTasks = sortTasks(
+    searchTasks(filterTasks(tasks, filter), search),
+    sortKey,
+    sortDir
+  );
   const doneCount = countTasks(tasks, 'done');
   const progressPct = Math.round((doneCount / tasks.length) * 100);
 
@@ -226,12 +262,35 @@ export default function App() {
             <table className="w-full text-sm text-left">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/80">
-                  <th className="px-4 py-3 font-medium text-gray-500 text-xs uppercase tracking-wide">Task</th>
-                  <th className="px-4 py-3 font-medium text-gray-500 text-xs uppercase tracking-wide">Assignee</th>
-                  <th className="px-4 py-3 font-medium text-gray-500 text-xs uppercase tracking-wide">Status</th>
-                  <th className="px-4 py-3 font-medium text-gray-500 text-xs uppercase tracking-wide">Priority</th>
-                  <th className="px-4 py-3 font-medium text-gray-500 text-xs uppercase tracking-wide">Labels</th>
-                  <th className="px-4 py-3 font-medium text-gray-500 text-xs uppercase tracking-wide">Date</th>
+                  {SORTABLE_COLUMNS.map(({ key, label, sortable }) => {
+                    const isSortable = sortable !== false;
+                    const isActive = isSortable && sortKey === key;
+                    return (
+                      <th
+                        key={key}
+                        scope="col"
+                        aria-sort={isActive ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                        className="px-4 py-3 font-medium text-gray-500 text-xs uppercase tracking-wide"
+                      >
+                        {isSortable ? (
+                          <button
+                            type="button"
+                            onClick={() => handleSort(key)}
+                            className="inline-flex items-center gap-1 uppercase tracking-wide hover:text-gray-900 transition-colors"
+                          >
+                            {label}
+                            {isActive && (
+                              sortDir === 'asc'
+                                ? <ArrowUp size={12} aria-hidden="true" />
+                                : <ArrowDown size={12} aria-hidden="true" />
+                            )}
+                          </button>
+                        ) : (
+                          label
+                        )}
+                      </th>
+                    );
+                  })}
                 </tr>
               </thead>
               <tbody>
