@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   LayoutDashboard, ListTodo, Users, Settings, Bell,
   ChevronDown, Circle, Clock, CheckCircle2, AlertCircle,
-  CalendarDays, Tag
+  CalendarDays, Tag, Search
 } from 'lucide-react';
 
 const INITIAL_TASKS = [
@@ -57,6 +57,15 @@ const LABEL_COLORS = {
 export function filterTasks(tasks, filter) {
   if (filter === 'all') return tasks;
   return tasks.filter(task => task.status === filter);
+}
+
+export function searchTasks(tasks, query) {
+  const q = query.trim().toLowerCase();
+  if (!q) return tasks;
+  return tasks.filter(task =>
+    task.title.toLowerCase().includes(q) ||
+    task.assignee.toLowerCase().includes(q)
+  );
 }
 
 export function countTasks(tasks, filter) {
@@ -131,9 +140,10 @@ function Sidebar({ active, onNavigate }) {
 export default function App() {
   const [tasks, setTasks] = useState(INITIAL_TASKS);
   const [filter, setFilter] = useState('all');
+  const [search, setSearch] = useState('');
   const [page, setPage] = useState('board');
 
-  const visibleTasks = filterTasks(tasks, filter);
+  const visibleTasks = searchTasks(filterTasks(tasks, filter), search);
   const doneCount = countTasks(tasks, 'done');
   const progressPct = Math.round((doneCount / tasks.length) * 100);
 
@@ -195,7 +205,20 @@ export default function App() {
                 );
               })}
             </div>
-            <span className="text-xs text-gray-400">{visibleTasks.length} tasks</span>
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search by title or assignee"
+                  aria-label="Search tasks"
+                  className="w-64 text-sm pl-8 pr-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-300"
+                />
+              </div>
+              <span className="text-xs text-gray-400">{visibleTasks.length} tasks</span>
+            </div>
           </div>
 
           {/* Task table */}
