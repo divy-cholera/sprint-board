@@ -10,12 +10,55 @@ const INITIAL_TASKS = [
   { id: 7, title: 'Add error handling', assignee: 'Alice', status: 'todo', date: '2025-06-12' }
 ];
 
+const FILTERS = [
+  { key: 'all', label: 'All' },
+  { key: 'todo', label: 'Todo' },
+  { key: 'in-progress', label: 'In Progress' },
+  { key: 'done', label: 'Done' }
+];
+
+export function filterTasks(tasks, filter) {
+  if (filter === 'all') return tasks;
+  return tasks.filter(task => task.status === filter);
+}
+
+export function countTasks(tasks, filter) {
+  return filterTasks(tasks, filter).length;
+}
+
 export default function App() {
   const [tasks] = useState(INITIAL_TASKS);
+  const [filter, setFilter] = useState('all');
+
+  const visibleTasks = filterTasks(tasks, filter);
 
   return (
     <div className="max-w-2xl mx-auto p-6">
       <h1 className="text-xl font-bold mb-6">Task List</h1>
+
+      <div className="flex flex-wrap gap-2 mb-4">
+        {FILTERS.map(({ key, label }) => {
+          const isActive = filter === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setFilter(key)}
+              aria-pressed={isActive}
+              className={`text-sm px-3 py-1.5 rounded border transition-colors ${
+                isActive
+                  ? 'bg-gray-800 text-white border-gray-800'
+                  : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-100'
+              }`}
+            >
+              {label}
+              <span className={`ml-1.5 text-xs ${isActive ? 'text-gray-300' : 'text-gray-400'}`}>
+                {countTasks(tasks, key)}
+              </span>
+            </button>
+          );
+        })}
+      </div>
 
       <table className="w-full text-sm text-left">
         <thead>
@@ -27,7 +70,7 @@ export default function App() {
           </tr>
         </thead>
         <tbody>
-          {tasks.map(task => (
+          {visibleTasks.map(task => (
             <tr key={task.id} className="border-b border-gray-100">
               <td className="py-3">{task.title}</td>
               <td className="py-3 text-gray-600">{task.assignee}</td>
